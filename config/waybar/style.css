@@ -1,0 +1,80 @@
+
+* {
+    border: none;
+    font-family: JetBrainsMono Nerd Font, monospace;
+    font-size: 12px;
+    min-height: 15px;
+    background: #141414;
+}
+
+window#waybar {
+	border: none;
+    background: #1a161e;
+    color: #1a161e;
+}
+
+#window{
+	background: #141414;
+	color: #cca9e8;  
+	border-radius: 10px;
+    padding: 0px 10px;
+    margin: 5px 0px;
+}
+
+#clock,
+#idle_inhibitor,
+#battery,
+#pulseaudio,
+#tray,
+#backlight {
+	color: #cca9e8;
+    background: #272127;
+    padding: 0px 10px 0px 10px;
+    margin: 0px 0px;
+}
+
+#clock {
+    color: #cca9e8;
+    padding: 0px 20px 0px 20px;/* space inside */
+    border-radius: 20px;/* optional rounded edges */
+    margin-left: 10px;
+    margin-right: 10px;/* space outside */
+}
+
+#battery {
+    color: #cca9e8;
+    padding: 0px 10px 0px 20px;
+    border-radius: 20px 0px 0px 20px;
+}
+
+#pulseaudio {
+	color: #cca9e8;
+	padding: 0px 20px 0px 10px;
+    border-radius: 0px 20px 20px 0px;
+}
+
+#idle_inhibitor {
+	color: #cca9e8;
+	padding: 0px 15px 0px 15px;
+    border-radius: 20px;
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+#power-profiles-daemon {
+	color: #cca9e8;
+	background: #272127;
+	padding: 0px 20px 0px 15px;
+    border-radius: 20px;
+    margin-left: 0px;
+    margin-right: 10px;
+}
+
+#tray {
+	color: #cca9e8;
+	background: #000000;
+	border: 1px solid #cca9e8;
+	padding: 0px 15px 0px 15px;
+    border-radius: 20px;
+    margin-right: 10px;
+}
