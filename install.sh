@@ -48,8 +48,6 @@ REPO_URL="https://github.com/visnudeva/hyprland-laniakea"  # Update this to your
 CLONE_DIR="${HOME}/hyprland-laniakea"
 CONFIG_SOURCE="${CLONE_DIR}/config"
 CONFIG_TARGET="${HOME}/.config"
-WALLPAPER_SOURCE="${CLONE_DIR}/backgrounds/${WALLPAPER_NAME}"
-WALLPAPER_DEST="${HOME}/.config/backgrounds/${WALLPAPER_NAME}"
 BACKUP_DIR="${HOME}/.config_backup_$(date +%Y%m%d_%H%M%S)"
 # SDDM theme and config paths
 SDDM_THEME_SOURCE="${CLONE_DIR}/sddm/laniakea"
@@ -69,7 +67,7 @@ PACKAGES=(
     network-manager-applet networkmanager nm-connection-editor 
     pipewire pipewire-alsa pipewire-jack pipewire-pulse 
     qt5-graphicaleffects qt5ct qt6-5compat qt6-wayland 
-    thunar thunar-archive-plugin npm satty swww
+    thunar thunar-archive-plugin npm satty swww grim
     thunar-media-tags-plugin thunar-volman tofi udiskie waybar 
     wl-clipboard wireplumber xdg-desktop-portal-hyprland yay 
     hyprland hypridle hyprlock wlogout
@@ -526,63 +524,9 @@ QT5CT_EOF
 }
 
 setup_wallpaper() {
-    log_info "[+] Setting up static wallpapers from backgrounds folder..."
-    if (( DRYRUN )); then
-        DRYRUN_SUMMARY+=("Would copy backgrounds to $BACKGROUND_DEST")
-        DRYRUN_SUMMARY+=("Would set up swww daemon for static wallpapers")
-    else
-        # Create destination directory
-        mkdir -p "$BACKGROUND_DEST"
-        
-        # Copy all background images to the destination
-        if [[ -d "$BACKGROUND_SOURCE" ]]; then
-            cp -r "$BACKGROUND_SOURCE"/* "$BACKGROUND_DEST/"
-            log_success "[+] Wallpapers copied to $BACKGROUND_DEST"
-        else
-            log_error "[!] Background source directory $BACKGROUND_SOURCE does not exist."
-        fi
-        
-        # Set up swww daemon for static wallpapers
-        systemctl --user daemon-reload
-        systemctl --user enable swww-daemon.service
-        
-        # Start swww daemon
-        systemctl --user start swww-daemon.service
-        
-        # Wait for swww daemon to be ready
-        local max_wait=10
-        local count=0
-        while [ $count -lt $max_wait ]; do
-            if pgrep -f "swww-daemon" > /dev/null; then
-                log_info "[+] swww daemon is running."
-                break
-            else
-                log_info "[+] Waiting for swww daemon... ($count/$max_wait)"
-                sleep 1
-                ((count++))
-            fi
-        done
-        
-        if [ $count -eq $max_wait ]; then
-            log_error "[!] swww daemon did not start properly."
-        else
-            # Set initial wallpaper using swww
-            local wallpaper_path="$BACKGROUND_DEST/Laniakea.png"
-            if [[ -f "$wallpaper_path" ]]; then
-                swww img "$wallpaper_path"
-                log_success "[+] Static wallpaper set using swww."
-            else
-                # If Laniakea.png doesn't exist, use any available wallpaper
-                local random_wallpaper=$(find "$BACKGROUND_DEST" -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" \) | head -n 1)
-                if [[ -n "$random_wallpaper" ]]; then
-                    swww img "$random_wallpaper"
-                    log_success "[+] Static wallpaper set using swww (random selection: $(basename "$random_wallpaper"))."
-                else
-                    log_error "[!] No wallpapers found in $BACKGROUND_DEST"
-                fi
-            fi
-        fi
-    fi
+    # This function is kept as a placeholder to maintain script structure
+    # but does nothing since static wallpaper is no longer supported
+    :
 }
 
 install_gtk_kvantum_themes() {
@@ -619,6 +563,57 @@ install_gtk_kvantum_themes() {
         
         # Also copy any icon themes if they exist in the theme directories
         find "$CLONE_DIR/GTK-kvantum" -name "*icon*" -type d -exec cp -r {} "$HOME/.icons/" \; 2>/dev/null || true
+    fi
+}
+
+install_laniakea_live_wallpaper() {
+    log_info "[+] Installing Laniakea Live Wallpaper..."
+    if (( DRYRUN )); then
+        DRYRUN_SUMMARY+=("Would run: bash \"$CLONE_DIR/laniakea-live-wallpaper/install-laniakea-live-wallpaper.sh\"")
+        DRYRUN_SUMMARY+=("Would run: systemctl --user daemon-reload")
+        DRYRUN_SUMMARY+=("Would run: systemctl --user enable wallpaper.service")
+        DRYRUN_SUMMARY+=("Would run: systemctl --user start wallpaper.service")
+    else
+        # Execute the live wallpaper installation script
+        if [[ -f "$CLONE_DIR/laniakea-live-wallpaper/install-laniakea-live-wallpaper.sh" ]]; then
+            bash "$CLONE_DIR/laniakea-live-wallpaper/install-laniakea-live-wallpaper.sh"
+            log_success "[+] Laniakea Live Wallpaper installed."
+            
+            # Wait a bit for the installation to complete before starting services
+            sleep 2
+            
+            # Reload and enable the wallpaper service (no timer - just sets wallpaper once)
+            systemctl --user daemon-reload
+            systemctl --user enable swww-daemon.service
+            systemctl --user enable wallpaper.service  # Enable the service to run on session start
+            
+            # Start swww daemon first and wait for it to be ready
+            systemctl --user start swww-daemon.service
+            
+            # Wait for swww daemon to be fully running
+            local max_wait=10
+            local count=0
+            while [ $count -lt $max_wait ]; do
+                if pgrep -f "swww-daemon" > /dev/null; then
+                    log_info "[+] swww daemon is running."
+                    break
+                else
+                    log_info "[+] Waiting for swww daemon... ($count/$max_wait)"
+                    sleep 1
+                    ((count++))
+                fi
+            done
+            
+            if [ $count -eq $max_wait ]; then
+                log_error "[!] swww daemon did not start properly."
+            else
+                # Start the wallpaper service once to set the wallpaper
+                systemctl --user start wallpaper.service
+                log_success "[+] Laniakea Live Wallpaper services enabled and started."
+            fi
+        else
+            log_error "[!] Laniakea Live Wallpaper installation script not found. Skipping."
+        fi
     fi
 }
 
@@ -696,6 +691,7 @@ post_install_checks() {
         pacman -Q "$pkg" &>/dev/null && log_success "Package $pkg installed." || log_error "Package $pkg NOT installed!"
     done
     [[ -d "$CONFIG_TARGET" ]] && log_success "$CONFIG_TARGET exists." || log_error "$CONFIG_TARGET missing!"
+    # Static wallpaper is no longer used; live wallpaper is used instead, checked separately below
     
     # Check for any of the expected Laniakea GTK themes
     if [[ -d "$HOME/.themes/Laniakea-Cybersakura-Gtk" ]] || [[ -d "$HOME/.themes/Laniakea-Bluemoon-Gtk" ]] || [[ -d "$HOME/.themes/Laniakea-Dreamvapor-Gtk" ]] || [[ -d "$HOME/.themes/Laniakea-Duskrose-Gtk" ]] || [[ -d "$HOME/.themes/Laniakea-Shadowfern-Gtk" ]]; then
@@ -711,19 +707,7 @@ post_install_checks() {
         log_error "Kvantum themes missing!"
     fi
     
-    # Check if background images were copied
-    if [[ -d "$BACKGROUND_DEST" && "$(ls -A $BACKGROUND_DEST)" ]]; then
-        log_success "Wallpaper images installed in $BACKGROUND_DEST."
-    else
-        log_error "Wallpaper images missing from $BACKGROUND_DEST!"
-    fi
-    
-    # Check if swww daemon is running
-    if systemctl --user is-active --quiet swww-daemon.service; then
-        log_success "swww-daemon service is active."
-    else
-        log_error "swww-daemon service is not active!"
-    fi
+    [[ -f "$HOME/.config/laniakea-live-wallpaper/playwright_capture_wallpaper.py" ]] && log_success "Laniakea Live Wallpaper installed." || log_error "Laniakea Live Wallpaper missing!"
     
     # Check if icon theme is set correctly
     local current_icon_theme
@@ -786,16 +770,15 @@ uninstall() {
         for aur_pkg in "${AUR_PACKAGES[@]}"; do
             $SUDO pacman -Rs --noconfirm "$aur_pkg" 2>/dev/null || log_info "AUR package $aur_pkg may not have been installed to begin with."
         done
-        # Remove wallpapers
-        rm -rf "$BACKGROUND_DEST"
         # Remove GTK-Kvantum themes
         rm -rf "$HOME/.themes/Laniakea-*"
         # Remove Kvantum themes
         rm -rf "$HOME/.config/Kvantum/Laniakea-*"
-        # Remove hyprland systemd user services
-        systemctl --user disable swww-daemon.service 2>/dev/null || true
-        systemctl --user stop swww-daemon.service 2>/dev/null || true
+        # Remove Laniakea Live Wallpaper files
+        rm -rf "$HOME/Pictures/Wallpapers"
+        rm -rf "$HOME/.config/laniakea-live-wallpaper"
         rm -f "$HOME/.config/systemd/user/swww-daemon.service"
+        rm -f "$HOME/.config/systemd/user/wallpaper.service"
         log_success "[+] Uninstall complete."
     fi
     dryrun_summary
@@ -864,12 +847,12 @@ main() {
     copy_dotfiles
     install_gtk_kvantum_themes
     setup_theming
-    setup_wallpaper
+    install_laniakea_live_wallpaper
     setup_sddm
     post_install_checks
     dryrun_summary
 
-    log_success "\nAll done! Enjoy the fresh Hyprland-laniakea setup with static wallpapers from the backgrounds folder.\n"
+    log_success "\nAll done! Enjoy the fresh Hyprland-laniakea setup with a beautiful live wallpaper which will be generated at every boot after a few seconds or with Mod+L\n"
 }
 
 main
