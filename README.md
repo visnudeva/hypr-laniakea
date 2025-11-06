@@ -18,22 +18,10 @@ Main keybindings:
     - Mod+I geany (IDE)
     - Mod+W generate new Laniakea wallpaper
 
-Cybersakura:
-![screenshot4](https://github.com/visnudeva/niri-laniakea-themes/blob/main/Screenshot4.png)
-
-Bluemoon:
-![screenshot5](https://github.com/visnudeva/niri-laniakea-themes/blob/main/Screenshot5.png)
-
-Duskrose:
-![screenshot6](https://github.com/visnudeva/niri-laniakea-themes/blob/main/Screenshot6.png)
-
-Shadowfern:
-![screenshot7](https://github.com/visnudeva/niri-laniakea-themes/blob/main/Screenshot7.png)
-
-
 Screenshots:
 
-![screenshot1](https://github.com/visnudeva/niri-laniakea-themes/blob/main/Screenshot1.png)
-![screenshot2](https://github.com/visnudeva/niri-laniakea-themes/blob/main/Screenshot2.png)
-![screenshot3](https://github.com/visnudeva/niri-laniakea-themes/blob/main/Screenshot3.png)
+![screenshot1](https://github.com/visnudeva/hypr-laniakea/blob/main/screenshot1.png)
+![screenshot2](https://github.com/visnudeva/hypr-laniakea/blob/main/screenshot2.png)
+![screenshot3](https://github.com/visnudeva/hypr-laniakea/blob/main/screenshot3.png)
+
 
