@@ -3,8 +3,8 @@ This setup includes an install script for Hyprland, Tofi, Dunst, Waybar, Kitty, 
 
 Install script:
 
-<pre>git clone --depth=1 https://github.com/visnudeva/niri-laniakea.git ~/niri-laniakea
-cd ~/niri-laniakea
+<pre>git clone --depth=1 https://github.com/visnudeva/hypr-laniakea.git ~/hypr-laniakea
+cd ~/hypr-laniakea
 chmod +x install.sh
 ./install.sh</pre>
 
