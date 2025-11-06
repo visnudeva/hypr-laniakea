@@ -43,8 +43,8 @@ log_info() {
 }
 
 # --- Variables ---
-REPO_URL="https://github.com/visnudeva/hyprland-laniakea"  # Update this to your actual repo URL
-CLONE_DIR="${HOME}/hyprland-laniakea"
+REPO_URL="https://github.com/visnudeva/hypr-laniakea"  # Update this to your actual repo URL
+CLONE_DIR="${HOME}/hypr-laniakea"
 CONFIG_SOURCE="${CLONE_DIR}/config"
 CONFIG_TARGET="${HOME}/.config"
 BACKUP_DIR="${HOME}/.config_backup_$(date +%Y%m%d_%H%M%S)"
