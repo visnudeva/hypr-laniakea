@@ -3,6 +3,9 @@
 set -e
 set -u
 
+# Initialize variables to prevent unbound variable errors
+SCRIPT_ABORTED=0
+
 # --- Color Output ---
 RED="\033[0;31m"
 GREEN="\033[0;32m"
@@ -76,10 +79,19 @@ REQUIRED_CMDS=(git rsync pacman diff meld)
 DRYRUN_SUMMARY=()
 
 # --- Trap for cleanup on errors ---
-cleanup() {
-    log_error "[!] Script failed or exited unexpectedly. Performing cleanup."
-    # Add cleanup logic here if needed, e.g., removing temp files
+error_handler() {
+    SCRIPT_ABORTED=1
 }
+
+SCRIPT_ABORTED=0
+cleanup() {
+    # Only run cleanup if script was aborted and not completed successfully
+    if [[ $SCRIPT_ABORTED -eq 1 ]]; then
+        log_error "[!] Script failed or exited unexpectedly. Performing cleanup."
+        # Add cleanup logic here if needed, e.g., removing temp files
+    fi
+}
+trap 'error_handler' ERR
 trap cleanup EXIT
 
 # --- Functions ---
@@ -217,16 +229,17 @@ install_packages() {
     if (( DRYRUN )); then
         DRYRUN_SUMMARY+=("Would run: pacman -Syu --needed --noconfirm ${PACKAGES[*]}")
     else
-        # Force a database sync and update before installing
-        $SUDO pacman -Syu --needed --noconfirm "${PACKAGES[@]}" || log_error "[!] pacman package installation failed."
-
-        # Check if each package was successfully installed
-        log_info "[+] Verifying package installation..."
+        # Force a database sync before installing packages individually
+        $SUDO pacman -Sy --noconfirm > /dev/null 2>&1 || true
+        
+        # Install packages one by one to handle conflicts gracefully
         for pkg in "${PACKAGES[@]}"; do
+            log_info "[+] Installing package: $pkg"
+            $SUDO pacman -S --needed --noconfirm "$pkg" > /dev/null 2>&1 || true
             if pacman -Q "$pkg" &>/dev/null; then
                 log_success "[+] Package '$pkg' installed successfully."
             else
-                log_error "[!] Package '$pkg' failed to install."
+                log_error "[!] Failed to install package '$pkg', skipping..."
             fi
         done
     fi
@@ -245,7 +258,16 @@ install_aur_packages() {
         if (( DRYRUN )); then
             DRYRUN_SUMMARY+=("Would run: $aur_helper -S --noconfirm ${AUR_PACKAGES[*]}")
         else
-            "$aur_helper" -S --noconfirm "${AUR_PACKAGES[@]}" || log_error "[!] $aur_helper AUR package installation failed."
+            # Install AUR packages one by one to handle conflicts gracefully
+            for aur_pkg in "${AUR_PACKAGES[@]}"; do
+                log_info "[+] Installing AUR package: $aur_pkg"
+                "$aur_helper" -S --noconfirm "$aur_pkg" > /dev/null 2>&1 || true
+                if pacman -Q "$aur_pkg" &>/dev/null; then
+                    log_success "[+] AUR package '$aur_pkg' installed successfully."
+                else
+                    log_error "[!] Failed to install AUR package '$aur_pkg', skipping..."
+                fi
+            done
         fi
     else
         log_error "[!] No AUR helper found. Skipping AUR package installation."
@@ -683,9 +705,22 @@ post_install_checks() {
         log_info "[+] Skipping post-install checks in dry-run mode."
         return
     fi
+    
+    # Temporarily disable exit-on-error for this section
+    set +e
+    
+    # Count successful and failed package installations
+    local installed_count=0
+    local total_count=${#PACKAGES[@]}
     for pkg in "${PACKAGES[@]}"; do
-        pacman -Q "$pkg" &>/dev/null && log_success "Package $pkg installed." || log_error "Package $pkg NOT installed!"
+        if pacman -Q "$pkg" &>/dev/null; then
+            log_success "Package $pkg installed."
+            ((installed_count++))
+        else
+            log_error "Package $pkg NOT installed!"
+        fi
     done
+    log_info "[+] Successfully installed $installed_count out of $total_count packages."
     [[ -d "$CONFIG_TARGET" ]] && log_success "$CONFIG_TARGET exists." || log_error "$CONFIG_TARGET missing!"
     # Static wallpaper is no longer used; live wallpaper is used instead, checked separately below
     
@@ -734,6 +769,9 @@ post_install_checks() {
             log_error "GTK theme not set correctly. Current (gsettings): $current_gtk_theme, Current (config): $config_theme"
         fi
     fi
+    
+    # Re-enable exit-on-error
+    set -e
 }
 
 dryrun_summary() {
@@ -760,12 +798,26 @@ uninstall() {
             cp -r "$latest_backup" "$CONFIG_TARGET"
             log_success "[+] Restored original config from $latest_backup"
         fi
-        # Remove packages
-        $SUDO pacman -Rs --noconfirm "${PACKAGES[@]}" 2>/dev/null || log_info "Some packages may not have been installed to begin with."
+        # Temporarily disable exit-on-error for this section
+        set +e
+        # Remove packages one by one
+        for pkg in "${PACKAGES[@]}"; do
+            if pacman -Q "$pkg" &>/dev/null; then
+                $SUDO pacman -Rs --noconfirm "$pkg" 2>/dev/null && log_info "Package $pkg removed." || log_info "Failed to remove package $pkg."
+            else
+                log_info "Package $pkg was not installed, skipping removal."
+            fi
+        done
         # Remove AUR packages
         for aur_pkg in "${AUR_PACKAGES[@]}"; do
-            $SUDO pacman -Rs --noconfirm "$aur_pkg" 2>/dev/null || log_info "AUR package $aur_pkg may not have been installed to begin with."
+            if pacman -Q "$aur_pkg" &>/dev/null; then
+                $SUDO pacman -Rs --noconfirm "$aur_pkg" 2>/dev/null && log_info "AUR package $aur_pkg removed." || log_info "Failed to remove AUR package $aur_pkg."
+            else
+                log_info "AUR package $aur_pkg was not installed, skipping removal."
+            fi
         done
+        # Re-enable exit-on-error
+        set -e
         # Remove GTK-Kvantum themes
         rm -rf "$HOME/.themes/Laniakea-*"
         # Remove Kvantum themes
@@ -848,9 +900,13 @@ main() {
     post_install_checks
     dryrun_summary
 
+    # Don't mark as aborted since we're completing successfully
+    SCRIPT_ABORTED=0
     log_success "\nAll done! Enjoy the fresh Hyprland-laniakea setup with a beautiful live wallpaper which will be generated at every boot after a few seconds or with Mod+L\n"
+    
+    # Remove trap since we're exiting successfully
+    trap - EXIT
+    exit 0
 }
 
 main
-
-trap - EXIT
