@@ -28,7 +28,7 @@ ${YELLOW}================================${NC}
 "
 
 # --- Logging ---
-LOG_FILE="$HOME/hyprland-laniakea_$(date +%Y%m%d_%H%M%S).log"
+LOG_FILE="$HOME/hypr-laniakea_$(date +%Y%m%d_%H%M%S).log"
 log() {
     echo -e "${YELLOW}$@${NC}" | tee -a "$LOG_FILE"
 }
