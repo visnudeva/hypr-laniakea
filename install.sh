@@ -902,7 +902,7 @@ main() {
 
     # Don't mark as aborted since we're completing successfully
     SCRIPT_ABORTED=0
-    log_success "\nAll done! Enjoy the fresh Hyprland-laniakea setup with a beautiful live wallpaper which will be generated at every boot after a few seconds or with Mod+L\n"
+    log_success "\nAll done! Enjoy the fresh Hypr-laniakea setup with a beautiful live wallpaper which will be generated at every boot after a few seconds or with Mod+M\n"
     
     # Remove trap since we're exiting successfully
     trap - EXIT
